@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  projects  Project[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  domain      String?
+  projectKey  String   @unique @default(uuid())
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sessions    Session[]
+  pageViews   PageView[]
+  events      Event[]
+  conversions Conversion[]
+  rules       ConversionRule[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Session {
+  id              String   @id @default(cuid())
+  sessionId       String   // Cookie based short session id per visitor
+  visitorId       String   // Cookie based long visitor id
+  projectId       String
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  // Attribution Info (Captured at session start)
+  channelGroup    String   @default("Direct") // e.g. Organic Search, Paid Social
+  campaign        String?
+  source          String?
+  medium          String?
+  referrer        String?
+  landingPage     String?
+  
+  // Engagement
+  engaged         Boolean  @default(false)
+  duration        Int      @default(0) // Seconds
+  
+  pageViews       PageView[]
+  events          Event[]
+  conversions     Conversion[]
+  
+  startedAt       DateTime @default(now())
+  lastActiveAt    DateTime @default(now())
+}
+
+model PageView {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sessionId    String
+  session      Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  url          String
+  title        String?
+  referrer     String?
+  duration     Int      @default(0)
+  scrollDepth  Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model Event {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sessionId    String
+  session      Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name         String   // e.g. "cta_click", "form_submit", "custom"
+  url          String
+  properties   Json?    // e.g. { "selector": "#buy-btn", "text": "Buy Now" }
+  createdAt    DateTime @default(now())
+}
+
+model Conversion {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sessionId    String
+  session      Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  ruleId       String?
+  rule         ConversionRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  name         String   // E.g. "Signup"
+  value        Float?
+  url          String
+  createdAt    DateTime @default(now())
+}
+
+model ConversionRule {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name         String
+  type         String   // "URL_MATCH" | "CLICK_SELECTOR"
+  pattern      String   // Path or Regex for URL, or CSS Selector for click
+  conversions  Conversion[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
