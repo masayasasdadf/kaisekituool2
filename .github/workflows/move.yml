@@ -1,0 +1,30 @@
+name: Move Files to Root
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Move all files to root
+        run: |
+          if [ -d "kaisekitool" ]; then
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            shopt -s dotglob
+            mv kaisekitool/* .
+            rmdir kaisekitool || true
+            git add .
+            git commit -m "Fix(Vercel): Move nested kaisekitool directory to repository root"
+            git push
+          fi
