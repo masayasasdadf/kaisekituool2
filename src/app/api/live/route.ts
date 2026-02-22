@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { liveEventEmitter } from '../track/route';
+import { liveEventEmitter } from '@/lib/events';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 
