@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server';
 import { liveEventEmitter } from '@/lib/events';
-import prisma from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
 
 // Force dynamic for Server-Sent Events
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-    // In a real scenario, protect this endpoint with NextAuth session check
-    // and ensure the user has access to the requested project.
     const { searchParams } = new URL(req.url);
     const projectKey = searchParams.get('projectKey');
 
