@@ -3,8 +3,6 @@ import prisma from "@/lib/prisma";
 import OverviewDashboard from "@/components/dashboard/OverviewDashboard";
 
 export default async function OverviewPage() {
-    // In a real app, read projectKey from user session/auth context
-    // Here we just fetch the first project or mock data for MVP
     const project = await prisma.project.findFirst();
 
     if (!project) {
@@ -16,26 +14,23 @@ export default async function OverviewPage() {
         );
     }
 
-    // Fetch basic KPIs (Last 30 Days theoretically)
-    // For MVP, we'll fetch totals or simulate them since the DB might be empty.
-    // Using direct Prisma count to demonstrate real connection capabilities.
     const sessionsCount = await prisma.session.count({ where: { projectId: project.id } });
     const usersCount = await prisma.session.groupBy({ by: ['visitorId'], where: { projectId: project.id } }).then(res => res.length);
     const conversionsCount = await prisma.conversion.count({ where: { projectId: project.id } });
     const engagedCount = await prisma.session.count({ where: { projectId: project.id, engaged: true } });
-    const singlePageViewCount = await prisma.session.count({
-        where: {
-            projectId: project.id,
-            pageViews: { _count: { equals: 1 } },
-            engaged: false
-        }
+
+    // Bounce = sessions with only 1 pageview AND not engaged
+    // Use raw count approach: find sessions that have exactly 1 pageview
+    const sessionsWithPvCounts = await prisma.session.findMany({
+        where: { projectId: project.id, engaged: false },
+        select: { id: true, _count: { select: { pageViews: true } } }
     });
+    const singlePageViewCount = sessionsWithPvCounts.filter(s => s._count.pageViews <= 1).length;
 
     const cvr = sessionsCount > 0 ? ((conversionsCount / sessionsCount) * 100).toFixed(1) : "0.0";
     const bounceRate = sessionsCount > 0 ? ((singlePageViewCount / sessionsCount) * 100).toFixed(1) : "0.0";
     const engagementRate = sessionsCount > 0 ? ((engagedCount / sessionsCount) * 100).toFixed(1) : "0.0";
 
-    // If empty, generate some dummy data for the MVP presentation
     const isMock = sessionsCount === 0;
 
     const stats = {
